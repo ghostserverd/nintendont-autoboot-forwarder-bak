@@ -15,32 +15,45 @@ include $(DEVKITPPC)/wii_rules
 # SOURCES is a list of directories containing source code
 # INCLUDES is a list of directories containing extra header files
 #---------------------------------------------------------------------------------
-TARGET		:=	boot
-BUILD		:=	build
 SOURCES		:=	source
-DATA		:=	data  
-INCLUDES	:=	source
+DATA		:=	app_booter
+
+TARGET_NORMAL	:=	nintendont_loader
+TARGET_DEBUG	:=	nintendont_loader_dbg
+
+BUILD_NORMAL	:=	build
+BUILD_DEBUG	:=	build_dbg
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
+CFLAGS	= -Ofast -Wall -flto=auto -fno-fat-lto-objects -use-flinker-plugin
 
-CFLAGS	= -g -O2 -Wall $(MACHDEP) $(INCLUDE)
+ifeq ($(strip $(DEBUG_BUILD)), 1)
+	CFLAGS	+=	-DDEBUG_BUILD
+	TARGET	:=	$(TARGET_DEBUG)
+	BUILD	:=	$(BUILD_DEBUG)
+else
+	TARGET	:=	$(TARGET_NORMAL)
+	BUILD	:=	$(BUILD_NORMAL)
+endif
+
+CFLAGS		+=	$(MACHDEP) $(INCLUDE)
 CXXFLAGS	=	$(CFLAGS)
+LDFLAGS		=	$(CFLAGS) -Wl,-Map,$(notdir $@).map
 
-LDFLAGS	= -g $(MACHDEP) -Wl,-Map,$(notdir $@).map
+INCLUDES	:=	source $(BUILD) Nintendont/common/include
 
 #---------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
 LIBS	:= -lfat -logc
 
-
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:= $(DEVKITPPC)/lib $(CURDIR)
+LIBDIRS	:= $(DEVKITPPC)/lib
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -63,7 +76,7 @@ CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 sFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.S)))
-BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
+BINFILES	:=	app_booter.bin
 
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C
@@ -98,13 +111,15 @@ export OUTPUT	:=	$(CURDIR)/$(TARGET)
 #---------------------------------------------------------------------------------
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
-	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+	@$(MAKE) --no-print-directory -C $(CURDIR)/app_booter -f $(CURDIR)/app_booter/Makefile
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).dol
-	@cd app_booter && $(MAKE) clean && cd ..
+	@rm -fr $(CURDIR)/$(BUILD_NORMAL) $(CURDIR)/$(TARGET_NORMAL).elf $(CURDIR)/$(TARGET_NORMAL).dol \
+		$(CURDIR)/$(BUILD_DEBUG) $(CURDIR)/$(TARGET_DEBUG).elf $(CURDIR)/$(TARGET_DEBUG).dol
+	@$(MAKE) --no-print-directory -C $(CURDIR)/app_booter -f $(CURDIR)/app_booter/Makefile clean
 
 
 #---------------------------------------------------------------------------------

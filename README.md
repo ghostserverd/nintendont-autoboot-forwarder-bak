@@ -75,3 +75,10 @@ source /etc/profile.d/devkit-env.sh
 ```
 ./Build.sh
 ```
+
+## Alternative docker build
+
+```
+docker build -t plugin_builder .
+docker run --rm -v ${PWD}:/project plugin_builder ./build.sh
+```
